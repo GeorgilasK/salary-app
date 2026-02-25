@@ -1,59 +1,71 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Υπολογιστής Μισθού", layout="centered")
+st.set_page_config(page_title="Υπολογιστής Μισθοδοσίας", layout="wide")
 
-# 1. Συνάρτηση για να διαβάζουμε τις περιγραφές από το Excel (Στήλη Β)
+# 1. Φόρτωση του Excel
 @st.cache_data
-def get_labels():
+def load_full_excel():
+    # Διαβάζουμε όλο το φύλλο Calc
     df = pd.read_excel("salary_calc.xlsx", sheet_name="Calc", header=None)
-    # Παίρνουμε το κείμενο από τη στήλη Β (index 1) για τις συγκεκριμένες γραμμές
-    # Προσοχή: Το index στην Python ξεκινά από το 0, οπότε η γραμμή 5 είναι index 4
-    labels = {
-        "d5": str(df.iloc[4, 1]),
-        "d6": str(df.iloc[5, 1]),
-        "d7": str(df.iloc[6, 1]),
-        "d9": str(df.iloc[8, 1]),
-        "d10": str(df.iloc[9, 1]),
-        "d11": str(df.iloc[10, 1]),
-        "d12": str(df.iloc[11, 1]),
-        "d43": str(df.iloc[42, 1])
-    }
-    return labels
+    return df
 
 try:
-    labels = get_labels()
-except:
-    # Αν αποτύχει το διάβασμα, βάλε προσωρινά labels για να μην κρασάρει
-    labels = {k: k.upper() for k in ["d5", "d6", "d7", "d9", "d10", "d11", "d12", "d43"]}
+    data = load_full_excel()
+    
+    st.title("💰 " + str(data.iloc[0, 1] if not pd.isna(data.iloc[0, 1]) else "Υπολογιστής Μισθού"))
 
-st.title("💰 Υπολογισμός Μισθοδοσίας")
+    # --- ΔΗΜΙΟΥΡΓΙΑ ΠΕΔΙΩΝ ---
+    
+    col1, col2 = st.columns(2)
 
-# --- ΕΙΣΑΓΩΓΗ ΔΕΔΟΜΕΝΩΝ ΜΕ ΤΑ ΣΩΣΤΑ ΟΝΟΜΑΤΑ ---
+    with col1:
+        st.subheader("Βασικά Στοιχεία")
+        
+        # D5 (Dropdown με Α-Δ και 1-23)
+        d5_label = data.iloc[4, 1] # Παίρνει την περιγραφή από το Β5
+        d5_options = ["Α", "Β", "Γ", "Δ"] + [str(i) for i in range(1, 24)]
+        d5_val = st.selectbox(f"{d5_label} (D5)", options=d5_options)
 
-# D5: Μικτό Dropdown
-d5_options = ["Α", "Β", "Γ", "Δ"] + [str(i) for i in range(1, 24)]
-d5_val = st.selectbox(labels["d5"], options=d5_options)
+        # D6
+        d6_label = data.iloc[5, 1]
+        d6_val = st.number_input(f"{d6_label} (D6)", value=0)
 
-# D6
-d6_val = st.number_input(labels["d6"], min_value=0, value=0)
+        # D7 (Dropdown - Εδώ βάλε τις ΔΙΚΕΣ ΣΟΥ επιλογές)
+        d7_label = data.iloc[6, 1]
+        # ΑΝΤΙΚΑΤΑΣΤΗΣΕ ΤΙΣ ΠΑΡΑΚΑΤΩ ΕΠΙΛΟΓΕΣ ΜΕ ΤΙΣ ΠΡΑΓΜΑΤΙΚΕΣ ΣΟΥ
+        d7_options = ["Επιλογή Α", "Επιλογή Β", "Επιλογή Γ"] 
+        d7_val = st.selectbox(f"{d7_label} (D7)", options=d7_options)
 
-# D7
-d7_options = ["Επιλογή 1", "Επιλογή 2"] # Άλλαξε αυτές τις επιλογές αν χρειάζεται
-d7_val = st.selectbox(labels["d7"], options=d7_options)
+    with col2:
+        st.subheader("Επιδόματα & Κρατήσεις")
+        
+        # D9 έως D12
+        d9_val = st.number_input(f"{data.iloc[8, 1]} (D9)", value=0.0)
+        d10_val = st.number_input(f"{data.iloc[9, 1]} (D10)", value=0.0)
+        d11_val = st.number_input(f"{data.iloc[10, 1]} (D11)", value=0.0)
+        d12_val = st.number_input(f"{data.iloc[11, 1]} (D12)", value=0.0)
 
-# D9, D10, D11, D12
-d9_val = st.number_input(labels["d9"], min_value=0.0, value=0.0)
-d10_val = st.number_input(labels["d10"], min_value=0.0, value=0.0)
-d11_val = st.number_input(labels["d11"], min_value=0.0, value=0.0)
-d12_val = st.number_input(labels["d12"], min_value=0.0, value=0.0)
+    # --- ΓΡΑΜΜΗ 21 ΚΑΙ ΚΑΤΩ ---
+    st.markdown("---")
+    st.subheader("Πρόσθετα Στοιχεία (Γραμμή 21+)")
+    
+    # Παράδειγμα για τη γραμμή 21 (Κελί D21)
+    d21_label = data.iloc[20, 1] # Στήλη Β, Γραμμή 21
+    d21_val = st.number_input(f"{d21_label} (D21)", value=0.0)
 
-st.markdown("---")
+    # --- ΥΠΟΛΟΓΙΣΜΟΣ ΑΠΟΤΕΛΕΣΜΑΤΟΣ ---
+    # Εδώ είναι το "κλειδί". Πρέπει να γράψουμε τη φόρμουλα του D43.
+    # ΠΡΕΠΕΙ ΝΑ ΜΟΥ ΠΕΙΣ ΤΗ ΦΟΡΜΟΥΛΑ! 
+    # Π.χ. result = d5_val + d6_val + d21_val...
+    
+    st.markdown("---")
+    final_label = data.iloc[42, 1] # Περιγραφή από το Β43
+    
+    # ΠΡΟΣΩΡΙΝΟ ΑΠΟΤΕΛΕΣΜΑ (Μέχρι να μου δώσεις τη φόρμουλα)
+    result = d10_val + d11_val + d12_val + d21_val
+    
+    st.metric(label=str(final_label), value=f"{result:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
 
-# --- ΥΠΟΛΟΓΙΣΜΟΣ (Εδώ βάλε τις πράξεις σου) ---
-# Παράδειγμα:
-result = d10_val + d11_val + d12_val 
-
-# --- ΕΜΦΑΝΙΣΗ ΑΠΟΤΕΛΕΣΜΑΤΟΣ ---
-st.subheader(labels["d43"])
-st.metric(label="Σύνολο", value=f"{result:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
+except Exception as e:
+    st.error(f"Σφάλμα κατά την ανάγνωση του Excel: {e}")
