@@ -3,51 +3,46 @@ import streamlit as st
 st.set_page_config(page_title="Υπολογιστής Μισθού", layout="centered")
 
 st.title("💰 Υπολογισμός Μισθοδοσίας")
-st.info("Συμπληρώστε τα στοιχεία στη στήλη D")
 
-# --- ΔΗΜΙΟΥΡΓΙΑ ΤΩΝ ΠΕΔΙΩΝ ΟΠΩΣ ΣΤΟ EXCEL ---
+# --- ΣΤΗΛΗ D: ΕΙΣΑΓΩΓΗ ΔΕΔΟΜΕΝΩΝ ---
 
-# D5: Κατηγορία (Dropdown)
-st.subheader("Στοιχεία Κατάταξης")
-d5_label = "Βαθμός/Κατηγορία (D5)" # Εδώ γράψε την περιγραφή της στήλης Β
-d5_val = st.selectbox(d5_label, options=["Α", "Β", "Γ", "Δ"])
+# D5: Μικτό Dropdown (Γράμματα και Αριθμοί μαζί)
+d5_label = "Κατηγορία / Βαθμός (D5)" 
+# Φτιάχνουμε τη λίστα: Α, Β, Γ, Δ και μετά 1 έως 23
+d5_options = ["Α", "Β", "Γ", "Δ"] + [str(i) for i in range(1, 24)]
+d5_val = st.selectbox(d5_label, options=d5_options)
 
-# D6: Προϋπηρεσία
-d6_label = "Έτη Προϋπηρεσίας (D6)"
-d6_val = st.number_input(d6_label, min_value=0, value=0)
+# D6: Προϋπηρεσία (Απλός αριθμός)
+d6_val = st.number_input("Έτη Προϋπηρεσίας (D6)", min_value=0, value=0)
 
-# D7: Κλιμάκιο (Dropdown 1-23)
-d7_label = "Μισθολογικό Κλιμάκιο (D7)"
-d7_options = list(range(1, 24))
-d7_val = st.selectbox(d7_label, options=d7_options)
+# D7: Το άλλο Dropdown (Εδώ βάλε ό,τι επιλογές έχει το δικό σου D7)
+# Αν π.χ. το D7 έχει ΝΑΙ/ΟΧΙ, το βάζουμε έτσι:
+d7_label = "Άλλη Παράμετρος (D7)"
+d7_val = st.selectbox(d7_label, options=["Επιλογή 1", "Επιλογή 2", "Επιλογή 3"])
+
+# D9: Χειροκίνητη εισαγωγή
+d9_val = st.number_input("Ειδική Παράμετρος (D9)", min_value=0.0, value=0.0)
+
+# Επιδόματα
+d10_val = st.number_input("Επίδομα Θέσης (D10)", min_value=0.0, value=0.0)
+d11_val = st.number_input("Ανθυγιεινό (D11)", min_value=0.0, value=0.0)
+d12_val = st.number_input("Παραμεθόριος (D12)", min_value=0.0, value=0.0)
 
 st.markdown("---")
-st.subheader("Επιδόματα & Λοιπά")
 
-# D10: Επίδομα Θέσης
-d10_label = "Επίδομα Θέσης (D10)"
-d10_val = st.number_input(d10_label, min_value=0.0, value=0.0, format="%.2f")
+# --- ΥΠΟΛΟΓΙΣΜΟΙ (ΠΡΟΣΟΧΗ: Εδώ πρέπει να μπουν οι πράξεις σου) ---
 
-# D11: Ανθυγιεινό
-d11_label = "Ανθυγιεινό Επίδομα (D11)"
-d11_val = st.number_input(d11_label, min_value=0.0, value=0.0, format="%.2f")
+# Παράδειγμα: Αν το D5 είναι "Α", ο βασικός είναι 1200, αν είναι "1" είναι 800 κλπ.
+# Αυτό είναι απλώς ένα παράδειγμα για να δεις πώς λειτουργεί:
+if d5_val in ["Α", "Β", "Γ", "Δ"]:
+    base = 1100
+else:
+    base = 700 + (int(d5_val) * 10)
 
-# D12: Παραμεθόριος
-d12_label = "Επίδομα Απομακρυσμένων (D12)"
-d12_val = st.number_input(d12_label, min_value=0.0, value=0.0, format="%.2f")
+final_result = base + d10_val + d11_val + d12_val
 
-# --- ΕΔΩ ΜΠΑΙΝΟΥΝ ΟΙ ΜΑΘΗΜΑΤΙΚΕΣ ΦΟΡΜΟΥΛΕΣ ΣΟΥ ---
-# Παράδειγμα υπολογισμού (Αντικατάστησε με τις δικές σου πράξεις)
-# Έστω: Βασικός = 1000 + (Κλιμάκιο * 30)
-basic_salary = 1000 + (d7_val * 30)
-total_gross = basic_salary + d10_val + d11_val + d12_val
-net_salary = total_gross * 0.75 # Παράδειγμα 25% κρατήσεις
+# --- ΕΜΦΑΝΙΣΗ ΑΠΟΤΕΛΕΣΜΑΤΟΣ ---
+st.subheader("Αποτέλεσμα (D43)")
+st.metric(label="Καθαρό Πληρωτέο", value=f"{final_result:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
 
-# --- ΕΜΦΑΝΙΣΗ ΑΠΟΤΕΛΕΣΜΑΤΩΝ ---
-st.markdown("---")
-st.success(f"### 💶 Καθαρό Πληρωτέο (D43): {net_salary:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
-
-# Αν θέλεις να φαίνονται και οι ενδιάμεσοι υπολογισμοί (Στήλη Ε)
-with st.expander("Δείτε την ανάλυση των υπολογισμών"):
-    st.write(f"Βασικός Μισθός: {basic_salary:.2f} €")
-    st.write(f"Σύνολο Κρατήσεων: {total_gross - net_salary:.2f} €")
+st.info("💡 Οι αλλαγές εφαρμόζονται αμέσως μόλις επιλέξετε νέα τιμή.")
