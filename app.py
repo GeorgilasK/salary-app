@@ -3,52 +3,51 @@ import streamlit as st
 st.set_page_config(page_title="Υπολογιστής Μισθού", layout="centered")
 
 st.title("💰 Υπολογισμός Μισθοδοσίας")
-st.write("Αλλάξτε τις τιμές και δείτε το αποτέλεσμα να ανανεώνεται αυτόματα.")
+st.info("Συμπληρώστε τα στοιχεία στη στήλη D")
 
-# --- ΕΙΣΑΓΩΓΗ ΔΕΔΟΜΕΝΩΝ (Στήλη D) ---
-with st.container():
-    st.subheader("Στοιχεία Υπαλλήλου")
-    
-    # D5: Dropdown Α, Β, Γ, Δ
-    d5_options = ["Α", "Β", "Γ", "Δ"]
-    grade = st.selectbox("Κατηγορία Εκπαίδευσης (D5)", options=d5_options)
+# --- ΔΗΜΙΟΥΡΓΙΑ ΤΩΝ ΠΕΔΙΩΝ ΟΠΩΣ ΣΤΟ EXCEL ---
 
-    # D7: Dropdown 1 έως 23
-    step_options = list(range(1, 24))
-    step = st.selectbox("Μισθολογικό Κλιμάκιο (D7)", options=step_options)
+# D5: Κατηγορία (Dropdown)
+st.subheader("Στοιχεία Κατάταξης")
+d5_label = "Βαθμός/Κατηγορία (D5)" # Εδώ γράψε την περιγραφή της στήλης Β
+d5_val = st.selectbox(d5_label, options=["Α", "Β", "Γ", "Δ"])
 
-    # D9: Χειροκίνητη εισαγωγή (Αριθμός)
-    d9_value = st.number_input("Έτη Προϋπηρεσίας (D9)", min_value=0, value=0, step=1)
+# D6: Προϋπηρεσία
+d6_label = "Έτη Προϋπηρεσίας (D6)"
+d6_val = st.number_input(d6_label, min_value=0, value=0)
 
-    # D10-D12: Επιπλέον Επιδόματα
-    pos_allowance = st.number_input("Επίδομα Θέσης (D10)", min_value=0.0, value=0.0, format="%.2f")
-    unhealthy = st.number_input("Ανθυγιεινό (D11)", min_value=0.0, value=0.0, format="%.2f")
-    remote = st.number_input("Παραμεθόριος (D12)", min_value=0.0, value=0.0, format="%.2f")
+# D7: Κλιμάκιο (Dropdown 1-23)
+d7_label = "Μισθολογικό Κλιμάκιο (D7)"
+d7_options = list(range(1, 24))
+d7_val = st.selectbox(d7_label, options=d7_options)
 
-# --- ΛΟΓΙΚΗ ΥΠΟΛΟΓΙΣΜΟΥ (Εδώ βάζεις τις φόρμουλες του Excel) ---
-
-# ΠΑΡΑΔΕΙΓΜΑ: Έστω ότι ο βασικός μισθός εξαρτάται από το κλιμάκιο
-# Εδώ θα αντικαταστήσεις με τις δικές σου τιμές
-base_salary = 800 + (step * 20) 
-
-# Προσθέτουμε τα επιδόματα
-total_gross = base_salary + pos_allowance + unhealthy + remote
-
-# Έστω κρατήσεις 20%
-deductions = total_gross * 0.20
-net_salary = total_gross - deductions
-
-# --- ΕΜΦΑΝΙΣΗ ΑΠΟΤΕΛΕΣΜΑΤΩΝ (Στήλη Ε) ---
 st.markdown("---")
-st.subheader("Αποτελέσματα Υπολογισμού")
+st.subheader("Επιδόματα & Λοιπά")
 
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("Βασικός Μισθός", f"{base_salary:,.2f} €")
-    st.metric("Σύνολο Επιδομάτων", f"{(pos_allowance + unhealthy + remote):,.2f} €")
+# D10: Επίδομα Θέσης
+d10_label = "Επίδομα Θέσης (D10)"
+d10_val = st.number_input(d10_label, min_value=0.0, value=0.0, format="%.2f")
 
-with col2:
-    st.info(f"**Καθαρό Πληρωτέο (D43):**")
-    st.title(f"{net_salary:,.2f} €")
+# D11: Ανθυγιεινό
+d11_label = "Ανθυγιεινό Επίδομα (D11)"
+d11_val = st.number_input(d11_label, min_value=0.0, value=0.0, format="%.2f")
 
-st.warning("Σημείωση: Οι υπολογισμοί βασίζονται στις φόρμουλες που έχουν οριστεί στον κώδικα Python.")
+# D12: Παραμεθόριος
+d12_label = "Επίδομα Απομακρυσμένων (D12)"
+d12_val = st.number_input(d12_label, min_value=0.0, value=0.0, format="%.2f")
+
+# --- ΕΔΩ ΜΠΑΙΝΟΥΝ ΟΙ ΜΑΘΗΜΑΤΙΚΕΣ ΦΟΡΜΟΥΛΕΣ ΣΟΥ ---
+# Παράδειγμα υπολογισμού (Αντικατάστησε με τις δικές σου πράξεις)
+# Έστω: Βασικός = 1000 + (Κλιμάκιο * 30)
+basic_salary = 1000 + (d7_val * 30)
+total_gross = basic_salary + d10_val + d11_val + d12_val
+net_salary = total_gross * 0.75 # Παράδειγμα 25% κρατήσεις
+
+# --- ΕΜΦΑΝΙΣΗ ΑΠΟΤΕΛΕΣΜΑΤΩΝ ---
+st.markdown("---")
+st.success(f"### 💶 Καθαρό Πληρωτέο (D43): {net_salary:,.2f} €".replace(",", "X").replace(".", ",").replace("X", "."))
+
+# Αν θέλεις να φαίνονται και οι ενδιάμεσοι υπολογισμοί (Στήλη Ε)
+with st.expander("Δείτε την ανάλυση των υπολογισμών"):
+    st.write(f"Βασικός Μισθός: {basic_salary:.2f} €")
+    st.write(f"Σύνολο Κρατήσεων: {total_gross - net_salary:.2f} €")
