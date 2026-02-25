@@ -8,7 +8,7 @@ st.title("📊 Πίνακας Υπολογισμού Αποδοχών")
 # 1. Φόρτωση του αρχείου Excel
 @st.cache_data
 def load_data():
-    # Διαβάζουμε το Excel - σιγουρέψου ότι το όνομα είναι σωστό
+    # Διαβάζουμε το Excel
     df = pd.read_excel("salary_calc.xlsx", sheet_name="Calc", header=None)
     
     # Επιλογή στηλών B(1), C(2), D(3), E(4), G(6)
@@ -17,14 +17,19 @@ def load_data():
     # Ονομασία στηλών
     df_selected.columns = ['Περιγραφή', 'Παράμετρος', 'Προς Επεξεργασία (D)', 'Αποτέλεσμα (Ε)', 'Επεξήγηση (G)']
     
-    # Καθαρισμός None
+    # Μετατροπή της στήλης Ε σε αριθμητική για να δουλέψει το format του ευρώ
+    df_selected['Αποτέλεσμα (Ε)'] = pd.to_numeric(df_selected['Αποτέλεσμα (Ε)'], errors='coerce')
+    
+    # Καθαρισμός None/NaN
     df_selected = df_selected.fillna('')
     return df_selected
 
 df_display = load_data()
 
-# 2. Ρύθμιση του Πίνακα
-# Εδώ ορίζουμε το Dropdown για τα κελιά που θέλεις (π.χ. ΝΑΙ/ΟΧΙ ή νούμερα)
+# 2. Δημιουργία της λίστας επιλογών για το Dropdown (Α, Β, Γ, Δ και 1 έως 23)
+dropdown_options = ["", "Α", "Β", "Γ", "Δ"] + [str(i) for i in range(1, 24)]
+
+# 3. Ρύθμιση του Πίνακα
 edited_df = st.data_editor(
     df_display,
     column_config={
@@ -32,15 +37,13 @@ edited_df = st.data_editor(
         "Παράμετρος": st.column_config.Column(disabled=True),
         "Προς Επεξεργασία (D)": st.column_config.SelectboxColumn(
             "Προς Επεξεργασία (D)",
-            help="Επιλέξτε τιμή από τη λίστα",
-            options=[
-                "", "NAI", "OXI", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"
-            ], # Πρόσθεσε εδώ όλες τις επιλογές που έχει το Dropdown σου στο Excel
+            help="Επιλέξτε τιμή (Α-Δ ή 1-23)",
+            options=dropdown_options,
             required=False,
         ),
         "Αποτέλεσμα (Ε)": st.column_config.NumberColumn(
             "Αποτέλεσμα (Ε)",
-            format="%.2f €", # Εδώ επιβάλλουμε 2 δεκαδικά και το σύμβολο του Ευρώ
+            format="%.2f €", 
             disabled=True
         ),
         "Επεξήγηση (G)": st.column_config.Column(disabled=True),
@@ -49,8 +52,7 @@ edited_df = st.data_editor(
     use_container_width=True,
 )
 
-# 3. Μήνυμα για τον χρήστη
-st.info("💡 Για να αλλάξετε τιμή, κάντε κλικ στο κελί της στήλης D και επιλέξτε από τη λίστα.")
+st.info("💡 Κάντε κλικ στα κελιά της στήλης D για να επιλέξετε τιμή. Οι στήλες περιγραφής και αποτελεσμάτων είναι κλειδωμένες.")
 
-if st.button("🔄 Ενημέρωση Υπολογισμών"):
-    st.success("Οι τιμές καταχωρήθηκαν προσωρινά στον πίνακα.")
+if st.button("🔄 Επιβεβαίωση Τιμών"):
+    st.success("Οι τιμές ενημερώθηκαν στον πίνακα.")
