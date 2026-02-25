@@ -4,58 +4,53 @@ import pandas as pd
 st.set_page_config(page_title="Υπολογιστής Μισθοδοσίας", layout="wide")
 
 st.title("📊 Πίνακας Υπολογισμού Αποδοχών")
-st.write("Συμπληρώστε τα στοιχεία στη στήλη **'Προς Επεξεργασία (D)'**.")
 
 # 1. Φόρτωση του αρχείου Excel
 @st.cache_data
 def load_data():
-    # Διαβάζουμε το φύλλο Calc. 
-    # ΠΡΟΣΟΧΗ: Αν το αρχείο σου ξεκινάει τα δεδομένα από την 1η γραμμή, βάλε skiprows=0
+    # Διαβάζουμε το Excel - σιγουρέψου ότι το όνομα είναι σωστό
     df = pd.read_excel("salary_calc.xlsx", sheet_name="Calc", header=None)
     
-    # Επιλογή στηλών B, C, D, E, G (Αφαιρέσαμε την F που είναι η 5η στήλη με βάση το μηδέν)
-    # Στήλες: B=1, C=2, D=3, E=4, G=6
-    df_selected = df.iloc[:, [1, 2, 3, 4, 6]]
+    # Επιλογή στηλών B(1), C(2), D(3), E(4), G(6)
+    df_selected = df.iloc[:, [1, 2, 3, 4, 6]].copy()
     
     # Ονομασία στηλών
-    df_selected.columns = ['Περιγραφή (Β)', 'Παράμετρος (C)', 'Προς Επεξεργασία (D)', 'Αποτέλεσμα (Ε)', 'Επεξήγηση (G)']
+    df_selected.columns = ['Περιγραφή', 'Παράμετρος', 'Προς Επεξεργασία (D)', 'Αποτέλεσμα (Ε)', 'Επεξήγηση (G)']
     
-    # Αντικατάσταση του None/NaN με κενό
+    # Καθαρισμός None
     df_selected = df_selected.fillna('')
-    
     return df_selected
 
-# Φόρτωση δεδομένων
 df_display = load_data()
 
-# 2. Δημιουργία διαδραστικού πίνακα
-# Χρησιμοποιούμε το st.data_editor για να επιτρέψουμε την επεξεργασία
+# 2. Ρύθμιση του Πίνακα
+# Εδώ ορίζουμε το Dropdown για τα κελιά που θέλεις (π.χ. ΝΑΙ/ΟΧΙ ή νούμερα)
 edited_df = st.data_editor(
     df_display,
     column_config={
-        "Περιγραφή (Β)": st.column_config.Column(disabled=True),
-        "Παράμετρος (C)": st.column_config.Column(disabled=True),
-        "Προς Επεξεργασία (D)": st.column_config.Column(
-            help="Κάντε διπλό κλικ για να αλλάξετε την τιμή",
-            disabled=False, # ΕΔΩ ΕΠΙΤΡΕΠΟΥΜΕ ΤΗΝ ΕΠΕΞΕΡΓΑΣΙΑ
+        "Περιγραφή": st.column_config.Column(disabled=True),
+        "Παράμετρος": st.column_config.Column(disabled=True),
+        "Προς Επεξεργασία (D)": st.column_config.SelectboxColumn(
+            "Προς Επεξεργασία (D)",
+            help="Επιλέξτε τιμή από τη λίστα",
+            options=[
+                "", "NAI", "OXI", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"
+            ], # Πρόσθεσε εδώ όλες τις επιλογές που έχει το Dropdown σου στο Excel
+            required=False,
         ),
-        "Αποτέλεσμα (Ε)": st.column_config.Column(disabled=True),
+        "Αποτέλεσμα (Ε)": st.column_config.NumberColumn(
+            "Αποτέλεσμα (Ε)",
+            format="%.2f €", # Εδώ επιβάλλουμε 2 δεκαδικά και το σύμβολο του Ευρώ
+            disabled=True
+        ),
         "Επεξήγηση (G)": st.column_config.Column(disabled=True),
     },
     hide_index=True,
     use_container_width=True,
-    num_rows="fixed"
 )
 
-# 3. Κουμπί Υπολογισμού
-if st.button("🔄 Εκτέλεση Υπολογισμού"):
-    # Εδώ θα έπρεπε να τρέχει το logic του υπολογισμού.
-    # Επειδή το Streamlit Cloud δεν τρέχει "ζωντανά" το Excel (xlwings), 
-    # το κουμπί αυτό χρησιμεύει για να επιβεβαιώσει ο χρήστης τις αλλαγές του.
-    st.success("Οι τιμές καταχωρήθηκαν. Το τελικό πληρωτέο (D43) θα ενημερωθεί βάσει των νέων δεδομένων.")
-    
-    # Δείχνουμε τις αλλαγές που έκανε ο χρήστης για επιβεβαίωση
-    changes = edited_df[edited_df['Προς Επεξεργασία (D)'] != '']
-    if not changes.empty:
-        st.write("Νέες τιμές που εισήχθησαν:")
-        st.write(changes[['Περιγραφή (Β)', 'Προς Επεξεργασία (D)']])
+# 3. Μήνυμα για τον χρήστη
+st.info("💡 Για να αλλάξετε τιμή, κάντε κλικ στο κελί της στήλης D και επιλέξτε από τη λίστα.")
+
+if st.button("🔄 Ενημέρωση Υπολογισμών"):
+    st.success("Οι τιμές καταχωρήθηκαν προσωρινά στον πίνακα.")
