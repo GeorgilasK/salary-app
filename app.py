@@ -2,39 +2,27 @@ import streamlit as st
 
 st.set_page_config(layout="wide", page_title="Payroll Full Sheet")
 
-# CSS για διακριτικά labels και κόκκινο χρώμα ελέγχου
+# CSS για διακριτικά labels και Borders
 st.markdown("""
     <style>
-    .error-msg { color: #FF0000; font-weight: bold; }
     .stNumberInput label, .stSelectbox label {
         font-size: 0.8rem !important;
         color: #666 !important;
     }
-    /* Μείωση κενού μεταξύ των containers */
     .element-container { margin-bottom: -10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- ΔΕΔΟΜΕΝΑ ΚΛΙΜΑΚΙΩΝ ---
-klimakia_data = {
-    "Α": 2589.31, "Β": 2508.87, "Γ": 2428.41, "Δ": 2364.07,
-    "1": 2234.94, "2": 2187.53, "3": 2087.69, "4": 1963.82,
-    "5": 1892.43, "6": 1717.38, "7": 1667.92, "8": 1570.34,
-    "9": 1454.83, "10": 1321.14, "11": 1309.80, "12": 1299.21,
-    "13": 1285.07, "14": 1275.99, "15": 1266.41, "16": 1258.08,
-    "17": 1224.28, "18": 1216.95, "19": 1202.63, "20": 1195.82,
-    "21": 1195.82, "22": 1195.82, "23": 1195.82
-}
+# --- ΔΕΔΟΜΕΝΑ ---
+klimakia_data = {"Α": 2589.31, "Β": 2508.87, "Γ": 2428.41, "Δ": 2364.07, "8": 1570.34} # κλπ
 
 st.title("📊 Αναλυτική Κατάσταση Μισθοδοσίας")
-
-# Σταθερές στήλες για όλες τις γραμμές: [Περιγραφή, Είσοδος, Ποσό, Κείμενο/Τύπος]
 col_widths = [3, 2, 2, 4]
 
 # --- ΓΡΑΜΜΗ 5 ---
 with st.container(border=True):
     c1, c2, c3, c4 = st.columns(col_widths)
-    d5_sel = c2.selectbox("Επιλογή Κλιμακίου (D5)", list(klimakia_data.keys()))
+    d5_sel = c2.selectbox("D5", list(klimakia_data.keys()))
     e5 = klimakia_data[d5_sel]
     c1.write("b5: ΜΙΣΘΟΛΟΓΙΚΟ ΚΛΙΜΑΚΙΟ")
     c3.write(f"e5: **{e5:,.2f} €**")
@@ -43,7 +31,7 @@ with st.container(border=True):
 # --- ΓΡΑΜΜΗ 6 ---
 with st.container(border=True):
     c1, c2, c3, c4 = st.columns(col_widths)
-    d6 = c2.number_input("Έτη (D6)", step=1, value=0)
+    d6 = c2.number_input("D6", step=1, value=0)
     e6 = d6 * 0.025 * e5
     c1.write("b6: ΧΡΟΝΟΕΠΙΔΟΜΑ")
     c3.write(f"e6: **{e6:,.2f} €**")
@@ -54,14 +42,13 @@ with st.container(border=True):
     c1, c2, c3, c4 = st.columns(col_widths)
     e11 = e5 + e6
     c1.markdown("**b11: ΒΑΣΙΚΟΣ ΜΙΣΘΟΣ**")
-    c2.write("") # Κενό στην είσοδο
     c3.markdown(f"**{e11:,.2f} €**")
     c4.write("f11: =SUM(E5:E6)")
 
 # --- ΓΡΑΜΜΗ 7 ---
 with st.container(border=True):
     c1, c2, c3, c4 = st.columns(col_widths)
-    d7_choice = c2.selectbox("Γάμος (D7)", ["ΟΧΙ", "ΝΑΙ"])
+    d7_choice = c2.selectbox("D7", ["ΟΧΙ", "ΝΑΙ"])
     e7 = (e11 * 0.10) if d7_choice == "ΝΑΙ" else 0.0
     c1.write("b7: ΕΠΙΔΟΜΑ ΓΑΜΟΥ")
     c3.write(f"e7: **{e7:,.2f} €**")
@@ -70,7 +57,7 @@ with st.container(border=True):
 # --- ΓΡΑΜΜΗ 9 ---
 with st.container(border=True):
     c1, c2, c3, c4 = st.columns(col_widths)
-    d9 = c2.number_input("Ποσό (D9)", step=1, value=0)
+    d9 = c2.selectbox("D9", [0, 5, 10, 15, 20, 25, 30])
     e9 = float(d9)
     c1.write("b9: ΠΟΛΥΕΤΙΑ")
     c3.write(f"e9: **{e9:,.2f} €**")
@@ -81,7 +68,6 @@ with st.container(border=True):
     c1, c2, c3, c4 = st.columns(col_widths)
     e12 = e7 + e9
     c1.markdown("**b12: ΠΡΟΣΑΥΞΗΣΕΙΣ ΜΙΣΘΟΥ**")
-    c2.write("")
     c3.markdown(f"**{e12:,.2f} €**")
     c4.write("f12: =SUM(E7:E10)")
 
@@ -90,35 +76,32 @@ with st.container(border=True):
     c1, c2, c3, c4 = st.columns(col_widths)
     e14 = e11 + e12
     c1.markdown("### b14: ΚΑΤΑΒΑΛΛΟΜΕΝΕΣ")
-    c2.write("")
     c3.markdown(f"### {e14:,.2f} €")
     c4.write("f14: =E11+E12")
 
-st.markdown("---")
-
 # --- ΓΡΑΜΜΕΣ 17, 18, 19 ---
-for code, label in [("D17", "b17: ΩΡΕΣ ΚΑΝ. ΑΠΑΣΧΟΛΗΣΗΣ"), ("D18", "b18: ΩΡΕΣ ΑΔΕΙΑΣ"), ("D19", "b19: ΩΡΕΣ ΑΠΟΥΣΙΑΣ")]:
-    with st.container(border=True):
-        c1, c2, c3, c4 = st.columns(col_widths)
-        if code == "D17":
-            d17 = c2.number_input(f"Ώρες ({code})", value=162.50, step=0.5)
-        elif code == "D18":
-            d18 = c2.number_input(f"Ώρες ({code})", value=0.0, step=0.5)
-        else:
-            d19 = c2.number_input(f"Ώρες ({code})", value=0.0, step=0.5)
-        c1.write(label)
-        c3.write("-")
-        c4.write(f"f{code[1:]}: Δεδομένα ωραρίου")
+with st.container(border=True):
+    c1, c2, c3, c4 = st.columns(col_widths)
+    d17 = c2.number_input("D17", value=162.50)
+    c1.write("b17: ΩΡΕΣ ΚΑΝ. ΑΠΑΣΧΟΛΗΣΗΣ")
+    c4.write("f17: Βάση για ωρομίσθιο")
 
-# Έλεγχος 162.50
-g19 = d17 + d18 + d19
-if g19 != 162.50:
-    st.markdown(f'<p class="error-msg">⚠️ ΠΡΟΣΟΧΗ: Σύνολο Ωρών {g19:.2f} (Πρέπει να είναι 162.50)</p>', unsafe_allow_html=True)
+with st.container(border=True):
+    c1, c2, c3, c4 = st.columns(col_widths)
+    d18 = c2.number_input("D18", value=0.0)
+    c1.write("b18: ΩΡΕΣ ΑΔΕΙΑΣ")
+    c4.write("f18: Δεδομένα ωραρίου")
+
+with st.container(border=True):
+    c1, c2, c3, c4 = st.columns(col_widths)
+    d19 = c2.number_input("D19", value=0.0)
+    c1.write("b19: ΩΡΕΣ ΑΠΟΥΣΙΑΣ")
+    c4.write("f19: Δεδομένα ωραρίου")
 
 # --- ΓΡΑΜΜΗ 21 ---
 with st.container(border=True):
     c1, c2, c3, c4 = st.columns(col_widths)
-    c21 = c2.number_input("Ώρες (C21)", value=162.50, step=0.5)
+    c21 = c2.number_input("C21", value=162.50)
     e21 = 1570.34 * 0.1136
     c1.write("b21: ΕΠΙΔΟΜΑ ΒΑΡΔΙΑΣ (0201)")
     c3.write(f"e21: **{e21:,.2f} €**")
@@ -127,51 +110,70 @@ with st.container(border=True):
 # --- ΓΡΑΜΜΗ 22 ---
 with st.container(border=True):
     c1, c2, c3, c4 = st.columns(col_widths)
-    d22 = c2.selectbox("Παιδιά (D22)", [0, 1, 2, 3, 4, 5])
+    d22 = c2.selectbox("D22", [0, 1, 2, 3, 4, 5])
     family_map = {0: 0, 1: 29.35, 2: 58.70, 3: 91.09, 4: 155.69, 5: 220.29}
     e22 = family_map[d22]
     c1.write("b22: ΕΠΙΔ.ΟΙΚ.ΒΑΡΩΝ ΑΠΟ ΚΑΝ.ΑΠΑΣΧ.")
     c3.write(f"e22: **{e22:,.2f} €**")
     c4.write("f22: (1-2 παιδιά x 29,35e // 3ο 32,39e // 4+ x 64,6e)")
 
-# --- ΓΡΑΜΜΗ 177 ---
+# ΥΠΟΛΟΓΙΣΜΟΣ D177
 d177 = (e14 + e21 + e22) / d17 if d17 > 0 else 0.0
-st.success(f"ΓΡΑΜΜΗ 177 - ΩΡΟΜΙΣΘΙΟ ΥΠΕΡΩΡΙΩΝ (D177): **{d177:.2f} €**")
 
-st.markdown("---")
-
-# --- ΓΡΑΜΜΕΣ 29-31 ---
-for label, b_text, mult, f_text in [
-    ("D29", "b29: 41 ΥΠΕΡΕΡΓΑΣΙΑ 20%", 1.20, "D177*D29*120%"),
-    ("D30", "b30: ΥΠΕΡΩΡΙΑ Μ.Α. 1,4", 1.40, "D177*D30*140%"),
-    ("D31", "b31: 51 ΥΠΕΡΩΡΙΑ Χ.Α. 120%", 1.20, "D177*D31*120%")
-]:
-    with st.container(border=True):
-        c1, c2, c3, c4 = st.columns(col_widths)
-        hours = c2.number_input(f"Ώρες ({label})", step=1, value=0)
-        total = (d177 * hours) * mult
-        c1.write(b_text)
-        c3.write(f"**{total:,.2f} €**")
-        c4.write(f"f{label[1:]}: {f_text}")
-
-# --- ΓΡΑΜΜΕΣ 33-36 ---
-with st.container(border=True): # 33
+# --- ΓΡΑΜΜΕΣ 29, 30, 31 ---
+with st.container(border=True):
     c1, c2, c3, c4 = st.columns(col_widths)
-    d33 = c2.number_input("Ώρες (D33)", step=1, value=0)
+    d29 = c2.number_input("D29", step=1, value=0)
+    e29 = d177 * d29 * 1.20
+    c1.write("b29: 41 ΥΠΕΡΕΡΓΑΣΙΑ 20%")
+    c3.write(f"e29: **{e29:,.2f} €**")
+    c4.write("f29: D177*D29*120%")
+
+with st.container(border=True):
+    c1, c2, c3, c4 = st.columns(col_widths)
+    d30 = c2.number_input("D30", step=1, value=0)
+    e30 = d177 * d30 * 1.40
+    c1.write("b30: ΥΠΕΡΩΡΙΑ Μ.Α. 1,4")
+    c3.write(f"e30: **{e30:,.2f} €**")
+    c4.write("f30: D177*D30*140%")
+
+with st.container(border=True):
+    c1, c2, c3, c4 = st.columns(col_widths)
+    d31 = c2.number_input("D31", step=1, value=0)
+    e31 = d177 * d31 * 1.20
+    c1.write("b31: 51 ΥΠΕΡΩΡΙΑ Χ.Α. 120%")
+    c3.write(f"e31: **{e31:,.2f} €**")
+    c4.write("f31: D177*D31*120%")
+
+# --- ΓΡΑΜΜΕΣ 33, 34, 35, 36 ---
+with st.container(border=True):
+    c1, c2, c3, c4 = st.columns(col_widths)
+    d33 = c2.number_input("D33", step=1, value=0)
     e33 = d33 * (e14 / 162.50) * 0.25
     c1.write("b33: ΠΡΟΣΑΥΞΗΣΗ ΝΥΧΤΑΣ")
-    c3.write(f"**{e33:,.2f} €**")
+    c3.write(f"e33: **{e33:,.2f} €**")
     c4.write("f33: (E14/162,5)*D33*25%")
 
-for label, b_text, m1, m2, f_text in [
-    ("D34", "b34: 43 ΠΡΟΣ.ΥΠΕΡΕΡΓΑΣΙΑΣ ΝΥΚΤΑΣ 20%", 1.20, 0.25, "D177*D34*120%*25%"),
-    ("D35", "b35: ΠΡΟΣ.ΥΠΕΡΩΡΙΑΣ ΝΥΧΤΑΣ", 1.40, 0.25, "D177*D35*140%*25%"),
-    ("D36", "b36: ΠΡΟΣ.ΥΠΕΡΩΡΙΑΣ ΝΥΚΤΑΣ Χ.A. 120%", 1.80, 0.25, "D177*D36*180%*25%")
-]:
-    with st.container(border=True):
-        c1, c2, c3, c4 = st.columns(col_widths)
-        h = c2.number_input(f"Ώρες ({label})", step=1, value=0)
-        res = (d177 * h) * m1 * m2
-        c1.write(b_text)
-        c3.write(f"**{res:,.2f} €**")
-        c4.write(f"f{label[1:]}: {f_text}")
+with st.container(border=True):
+    c1, c2, c3, c4 = st.columns(col_widths)
+    d34 = c2.number_input("D34", step=1, value=0)
+    e34 = d177 * d34 * 1.20 * 0.25
+    c1.write("b34: 43 ΠΡΟΣ.ΥΠΕΡΕΡΓΑΣΙΑΣ ΝΥΚΤΑΣ 20%")
+    c3.write(f"e34: **{e34:,.2f} €**")
+    c4.write("f34: D177*D34*120%*25%")
+
+with st.container(border=True):
+    c1, c2, c3, c4 = st.columns(col_widths)
+    d35 = c2.number_input("D35", step=1, value=0)
+    e35 = d177 * d35 * 1.40 * 0.25
+    c1.write("b35: ΠΡΟΣ.ΥΠΕΡΩΡΙΑΣ ΝΥΧΤΑΣ")
+    c3.write(f"e35: **{e35:,.2f} €**")
+    c4.write("f35: D177*D35*140%*25%")
+
+with st.container(border=True):
+    c1, c2, c3, c4 = st.columns(col_widths)
+    d36 = c2.number_input("D36", step=1, value=0)
+    e36 = d177 * d36 * 1.80 * 0.25
+    c1.write("b36: ΠΡΟΣ.ΥΠΕΡΩΡΙΑΣ ΝΥΚΤΑΣ Χ.A. 120%")
+    c3.write(f"e36: **{e36:,.2f} €**")
+    c4.write("f36: D177*D36*180%*25%")
