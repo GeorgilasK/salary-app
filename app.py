@@ -31,4 +31,5 @@ with st.sidebar:
     d7_choice = st.radio("Επίδομα Γάμου (D7)", ["ΝΑΙ", "ΟΧΙ"])
     d9_choice = st.selectbox("Πολυετία (D9)", [0, 5, 10, 15, 20, 25, 30])
     d22_choice = st.selectbox("Οικογενειακά Βάρη (D22)", [0, 1, 2, 3, 4, 5])
-    d17
+    # Η σωστή μορφή για το Sidebar input:
+d17_val = st.sidebar.number_input("Ώρες Μήνα (D17)", min_value=1.0, value=162.5)
