@@ -1,115 +1,183 @@
 import streamlit as st
 
-st.set_page_config(layout="wide", page_title="Payroll Full Sheet")
+st.set_page_config(layout="wide", page_title="Payroll Calculator - Exact Replica")
 
-# CSS για εμφάνιση στυλ Excel
+# CSS για την οπτική πιστότητα του Excel
 st.markdown("""
     <style>
-    .row-container {
-        border: 1px solid #ddd;
-        padding: 10px;
-        border-radius: 5px;
-        margin-bottom: 5px;
-        background-color: #ffffff;
+    .excel-row {
+        border: 1px solid #e0e0e0;
+        padding: 8px;
+        margin-bottom: -1px; /* Ενοποίηση πλαισίων όπως στο Excel */
+        background-color: white;
+        display: flex;
+        align-items: center;
     }
-    .stNumberInput label, .stSelectbox label {
-        font-size: 0.8rem !important;
-        color: #555 !important;
-    }
-    .formula-text {
-        font-family: monospace;
-        color: #2e7d32;
-        font-size: 0.85rem;
+    .col-b { width: 25%; font-weight: 500; border-right: 1px solid #f0f0f0; padding-right: 10px; }
+    .col-d { width: 15%; border-right: 1px solid #f0f0f0; padding: 0 10px; }
+    .col-e { width: 15%; font-weight: bold; color: #1a73e8; border-right: 1px solid #f0f0f0; padding: 0 10px; text-align: right; }
+    .col-f { width: 22%; font-size: 0.85rem; color: #666; border-right: 1px solid #f0f0f0; padding: 0 10px; }
+    .col-g { width: 23%; font-size: 0.85rem; color: #666; padding-left: 10px; }
+    
+    /* Διακριτικά Inputs */
+    .stNumberInput div div input, .stSelectbox div div div {
+        background-color: #fafafa !important;
+        border: 1px solid #eee !important;
+        font-size: 0.9rem !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- ΒΟΗΘΗΤΙΚΕΣ ΣΥΝΑΡΤΗΣΕΙΣ ---
-def format_euro(amount):
-    return f"{amount:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
-
-def render_row(row_num, label, input_col=None, result_val=0, note=""):
-    """Δημιουργεί μια γραμμή σε πλαίσιο με 4 στήλες όπως το Excel"""
-    with st.container():
-        st.markdown('<div class="row-container">', unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns([3, 1.5, 1.5, 4])
-        
-        c1.write(f"**{row_num}: {label}**")
-        
-        # Αν η γραμμή δέχεται είσοδο
-        user_val = None
-        if input_col is not None:
-            user_val = c2.number_input("Είσοδος", key=f"d{row_num}", label_visibility="collapsed", **input_col)
-        else:
-            c2.write("")
-            
-        c3.write(f"**{format_euro(result_val)}**")
-        c4.markdown(f'<span class="formula-text">{note}</span>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        return user_val
-
-# --- ΔΕΔΟΜΕΝΑ ΠΙΝΑΚΩΝ ---
+# --- ΔΕΔΟΜΕΝΑ ΠΙΝΑΚΩΝ (Από Calc & Temp) ---
 KLIMAKIA = {
-    "Α": 2589.31, "Β": 2508.87, "Γ": 2428.41, "Δ": 2364.07, "1": 2234.94, "8": 1570.34, "13": 1321.14 # κλπ
+    "Α": 2589.31, "Β": 2508.87, "Γ": 2428.41, "Δ": 2364.07, "1": 2234.94, "2": 2187.53, 
+    "3": 2087.69, "4": 1963.82, "5": 1892.43, "6": 1717.38, "7": 1667.92, "8": 1570.34, 
+    "9": 1454.83, "10": 1424.81, "11": 1376.89, "12": 1350.16, "13": 1321.14, "14": 1309.80, 
+    "15": 1299.21, "16": 1285.07, "17": 1275.99, "18": 1266.41, "19": 1258.08, "20": 1224.28, 
+    "21": 1216.95, "22": 1202.63, "23": 1195.82
 }
 
-st.title("📊 Αναλυτική Κατάσταση Μισθοδοσίας (Rows 1-290)")
+def fmt(val):
+    return f"{val:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
 
-# --- ΕΝΟΤΗΤΑ 1: ΒΑΣΙΚΑ (5-14) ---
-with st.expander("Βασικές Αποδοχές & Επιδόματα", expanded=True):
-    # Γραμμή 5
-    d5_key = st.selectbox("5: ΜΙΣΘΟΛΟΓΙΚΟ ΚΛΙΜΑΚΙΟ", list(KLIMAKIA.keys()), index=4)
-    e5 = KLIMAKIA[d5_key]
-    render_row(5, "ΜΙΣΘΟΛΟΓΙΚΟ ΚΛΙΜΑΚΙΟ", result_val=e5, note="επιλογή από πίνακα D254:D280")
-    
-    # Γραμμή 6
-    d6 = render_row(6, "ΧΡΟΝΟΕΠΙΔΟΜΑ", {"value": 14, "step": 1}, result_val=d6*0.025*e5 if 'd6' in locals() else 0, note="ετη εργασιας , μειον την τριετια 2012-2014")
-    e6 = d6 * 0.025 * e5
-    
-    # Γραμμή 11
-    e11 = e5 + e6
-    render_row(11, "ΒΑΣΙΚΟΣ ΜΙΣΘΟΣ", result_val=e11, note="=SUM(E5:E6)")
-    
-    # Γραμμή 7
-    d7_sel = st.selectbox("7: ΕΠΙΔΟΜΑ ΓΑΜΟΥ (Επιλογή)", ["NAI", "OXI"])
-    e7 = e11 * 0.10 if d7_sel == "NAI" else 0
-    render_row(7, "ΕΠΙΔΟΜΑ ΓΑΜΟΥ", result_val=e7, note='=IF(D7="NAI";E11*10%;0)')
+st.title("📑 salary_calc.xlsx (Πλήρης Αναπαράσταση)")
 
-# --- ΕΝΟΤΗΤΑ 2: ΩΡΕΣ & ΥΠΕΡΩΡΙΕΣ (17-38) ---
-with st.expander("Ωράριο & Πρόσθετες Αποδοχές", expanded=True):
-    d17 = render_row(17, "ΩΡΕΣ ΚΑΝ. ΑΠΑΣΧΟΛΗΣΗΣ", {"value": 162.5}, result_val=0, note="Βάση για ωρομίσθιο")
-    
-    # Υπολογισμός Ωρομισθίου (Γραμμή 175/177 στο Excel)
-    e14 = e11 + e7 # Απλοποιημένο για το παράδειγμα
-    d177 = e14 / 162.5
-    
-    # Γραμμές 29-31 (Υπερωρίες)
-    d29 = render_row(29, "41 ΥΠΕΡΕΡΓΑΣΙΑ 20%", {"value": 0, "step": 1}, result_val=d177*d29*1.20 if 'd29' in locals() else 0, note="D177*D29*120%")
-    d30 = render_row(30, "ΥΠΕΡΩΡΙΑ Μ.Α. 1,4", {"value": 0, "step": 1}, result_val=d177*d30*1.40 if 'd30' in locals() else 0, note="D177*D30*140%")
-    
-    # Γραμμές 33-36 (Νύχτα)
-    d33 = render_row(33, "ΠΡΟΣΑΥΞΗΣΗ ΝΥΧΤΑΣ", {"value": 0, "step": 1}, result_val=d33*(e14/162.5)*0.25 if 'd33' in locals() else 0, note="(E14/162,5)*D33*25%")
-    
-    # ΓΡΑΜΜΗ 38 (Αυτή που έλειπε)
-    d38 = render_row(38, "ΠΡΟΣΑΥΞΗΣΗ ΚΥΡΙΑΚΩΝ - ΑΡΓΙΩΝ", {"value": 0, "step": 1}, result_val=d38*(e14/162.5)*0.75 if 'd38' in locals() else 0, note="(E14/162,5)*D38*75%")
+# Helper για τη δημιουργία της γραμμής
+def draw_excel_row(row_id, desc, input_widget=None, result=0.0, f_text="", g_text=""):
+    st.markdown(f"""
+    <div class="excel-row">
+        <div class="col-b">{row_id}: {desc}</div>
+        <div class="col-d" id="input_{row_id}"></div>
+        <div class="col-e">{fmt(result)}</div>
+        <div class="col-f">{f_text if f_text else ""}</div>
+        <div class="col-g">{g_text if g_text else ""}</div>
+    </div>
+    """, unsafe_allow_html=True)
+    # Τοποθέτηση του widget στην κολόνα D μέσω streamlit columns
+    # (Επειδή το HTML δεν δέχεται απευθείας widgets, χρησιμοποιούμε columns για το layout)
 
-# --- ΕΝΟΤΗΤΑ 3: ΣΥΝΟΛΑ & ΚΡΑΤΗΣΕΙΣ (56-80) ---
-with st.expander("Κρατήσεις & Καθαρά", expanded=True):
-    # Γραμμή 56
-    e56 = e14 + (d177*d29*1.20) # Προσθέτουμε όλα τα Ε
-    render_row(56, "ΣΥΝΟΛΟ ΜΙΚΤΩΝ", result_val=e56, note="Άθροισμα όλων των αποδοχών")
-    
-    # Γραμμή 59
-    e59 = e14 * 0.1682 
-    render_row(59, "ΕΦΚΑ (Κρατήσεις Εργαζομένου)", result_val=e59, note="E14 * 16,82%")
-    
-    # ΓΡΑΜΜΗ 61 (ΦΟΡΟΣ)
-    # Εδώ μπαίνει η λογική με τους 17 μισθούς που είδα στο Excel
-    taxable = e56 - e59
-    e61 = 150.00 # Παράδειγμα, εδώ θα καλέσουμε τη συνάρτηση calculate_tax
-    render_row(61, "ΦΟΡΟΣ", result_val=e61, note="Υπολογισμός βάσει κλίμακας (17 μισθοί)")
+# --- ΥΠΟΛΟΓΙΣΤΙΚΗ ΜΗΧΑΝΗ (Logic) ---
+# Σημείωση: Ορίζουμε τα inputs πρώτα για να έχουμε τις τιμές για τους υπολογισμούς
 
-    # ΓΡΑΜΜΗ 79 (ΠΛΗΡΩΤΕΟ)
-    e79 = e56 - e59 - e61
-    st.markdown("---")
-    render_row(79, "ΠΛΗΡΩΤΕΟ ΠΟΣΟ", result_val=e79, note="=E56 - Σύνολο Κρατήσεων")
+# --- ΣΕΙΡΑ 5: ΜΙΣΘΟΛΟΓΙΚΟ ΚΛΙΜΑΚΙΟ ---
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.write("**5: ΜΙΣΘΟΛΟΓΙΚΟ ΚΛΙΜΑΚΙΟ**")
+with c2: d5 = st.selectbox("D5", options=list(KLIMAKIA.keys()), index=12, label_visibility="collapsed")
+e5 = KLIMAKIA[d5]
+with c3: st.write(f"**{fmt(e5)}**")
+with c4: st.write("επιλογή από πίνακα D254:D280")
+with c5: st.write("")
+
+# --- ΣΕΙΡΑ 6: ΧΡΟΝΟΕΠΙΔΟΜΑ ---
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.write("**6: ΧΡΟΝΟΕΠΙΔΟΜΑ**")
+with c2: d6 = st.number_input("D6", value=14, step=1, label_visibility="collapsed")
+e6 = d6 * 0.025 * e5
+with c3: st.write(f"**{fmt(e6)}**")
+with c4: st.write("ετη εργασιας , μειον την τριετια 2012-2014")
+with c5: st.write("=D6*2,5%*E5")
+
+# --- ΣΕΙΡΑ 11: ΒΑΣΙΚΟΣ ΜΙΣΘΟΣ ---
+e11 = e5 + e6
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.markdown("**11: ΒΑΣΙΚΟΣ ΜΙΣΘΟΣ**")
+with c2: st.write("")
+with c3: st.markdown(f"**{fmt(e11)}**")
+with c4: st.write("=SUM(E5:E6)")
+with c5: st.write("")
+
+# --- ΣΕΙΡΑ 7: ΕΠΙΔΟΜΑ ΓΑΜΟΥ ---
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.write("**7: ΕΠΙΔΟΜΑ ΓΑΜΟΥ**")
+with c2: d7 = st.selectbox("D7", ["NAI", "OXI"], label_visibility="collapsed")
+e7 = e11 * 0.10 if d7 == "NAI" else 0.0
+with c3: st.write(f"**{fmt(e7)}**")
+with c4: st.write('=IF(D7="NAI";E11*10%;0)')
+with c5: st.write("")
+
+# --- ΣΕΙΡΑ 8: ΑΝΘΥΓΙΕΙΝΟ ΕΠΙΔΟΜΑ ---
+e8 = 239.08 # Σταθερά από το Calc.csv
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.write("**8: ANΘΥΓΙΕΙΝΟ ΕΠΙΔΟΜA**")
+with c2: st.write("")
+with c3: st.write(f"**{fmt(e8)}**")
+with c4: st.write("Σταθερό ποσό")
+with c5: st.write("")
+
+# --- ΣΕΙΡΑ 9: ΠΟΛΥΕΤΙΑ ---
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.write("**9: ΕΠΙΔΟΜΑ ΠΟΛΥΕΤΙΑΣ**")
+with c2: d9 = st.selectbox("D9", [0, 5, 10, 15, 20, 25, 30], index=3, label_visibility="collapsed")
+poly_map = {0:0, 5:0.025, 10:0.05, 15:0.075, 20:0.1, 25:0.125, 30:0.15}
+e9 = e5 * poly_map[d9]
+with c3: st.write(f"**{fmt(e9)}**")
+with c4: st.write("(ANA 5ETIA, πχ 5-10-15)")
+with c5: st.write("")
+
+# --- ΣΕΙΡΑ 12: ΠΡΟΣΑΥΞΗΣΕΙΣ ΜΙΣΘΟΥ ---
+e12 = e7 + e8 + e9
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.markdown("**12: ΠΡΟΣΑΥΞΗΣΕΙΣ ΜΙΣΘΟΥ**")
+with c2: st.write("")
+with c3: st.markdown(f"**{fmt(e12)}**")
+with c4: st.write("=SUM(E7:E10)")
+with c5: st.write("")
+
+# --- ΣΕΙΡΑ 14: ΚΑΤΑΒΑΛΟΜΕΝΕΣ ΑΠΟΔΟΧΕΣ ---
+e14 = e11 + e12
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.markdown("### 14: ΚΑΤΑΒΑΛΟΜΕΝΕΣ ΑΠΟΔΟΧΕΣ")
+with c2: st.write("")
+with c3: st.markdown(f"### {fmt(e14)}")
+with c4: st.write("")
+with c5: st.write("")
+
+st.divider()
+
+# --- ΕΝΟΤΗΤΑ ΩΡΩΝ (17-21) ---
+# Ωρομίσθιο D175
+d175 = e14 / 162.5
+
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.write("**17: ΕΡΓΑΣΙΑ ΜΗΝΟΣ**")
+with c2: d17 = st.number_input("D17", value=162.5, label_visibility="collapsed")
+e17 = d175 * d17
+with c3: st.write(f"**{fmt(e17)}**")
+with c4: st.write("D175*D17")
+with c5: st.write("")
+
+# --- ΣΕΙΡΑ 21: ΕΠΙΔΟΜΑ ΒΑΡΔΙΑΣ ---
+e21 = 1570.34 * 0.1136
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.write("**21: ΕΠΙΔΟΜΑ ΒΑΡΔΙΑΣ (0201)**")
+with c2: st.write("")
+with c3: st.write(f"**{fmt(e21)}**")
+with c4: st.write("11,36% επί του 8ου κλιμακίου")
+with c5: st.write("για βαρδια Πρ-Απογ-Νυχ.")
+
+# --- ΣΕΙΡΑ 22: ΕΠΙΔΟΜΑ ΟΙΚΟΓΕΝΕΙΑΚΩΝ ΒΑΡΩΝ ---
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.write("**22: ΕΠΙΔ. ΟΙΚΟΓ/ΚΩΝ ΒΑΡΩΝ**")
+with c2: d22 = st.selectbox("D22", [0, 1, 2, 3, 4, 5], index=1, label_visibility="collapsed")
+child_map = {0:0, 1:29.35, 2:58.70, 3:91.09, 4:155.69, 5:220.29}
+e22 = child_map[d22]
+with c3: st.write(f"**{fmt(e22)}**")
+with c4: st.write("(1-2 παιδιά x 29,35e // 3ο 32,39e // 4+ x 64,6e)")
+with c5: st.write("ΑΠΟ ΚΑΝ. ΑΠΑΣΧ.")
+
+# --- ΣΕΙΡΑ 38: ΠΡΟΣΑΥΞΗΣΗ ΚΥΡΙΑΚΩΝ ---
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.write("**38: ΠΡΟΣΑΥΞΗΣΗ ΚΥΡΙΑΚΩΝ - ΑΡΓΙΩΝ**")
+with c2: d38 = st.number_input("D38", value=0.0, label_visibility="collapsed")
+e38 = (e14 / 162.5) * d38 * 0.75
+with c3: st.write(f"**{fmt(e38)}**")
+with c4: st.write("(E14/162,5)*D38*75%")
+with c5: st.write("")
+
+# --- ΣΥΝΟΛΑ (56+) ---
+st.divider()
+e56 = e17 + e21 + e22 + e38 # Και οι υπόλοιπες γραμμές που θα προστεθούν
+c1, c2, c3, c4, c5 = st.columns([2.5, 1.5, 1.5, 2.2, 2.3])
+with c1: st.markdown("### 56: ΣΥΝΟΛΟ ΜΙΚΤΩΝ")
+with c3: st.markdown(f"### {fmt(e56)}")
+with c4: st.write("=SUM(E17:E55)")
