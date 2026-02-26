@@ -4,71 +4,88 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 
 st.set_page_config(page_title="Υπολογιστής Μισθοδοσίας", layout="wide")
 
-# Φόρτωση δεδομένων από το Excel
 @st.cache_data
 def load_data():
-    # Αντικατάστησε το όνομα με το δικό σου αρχείο
-    df = pd.read_excel("salary_calc.xlsx", sheet_name="Calc", header=None)
-    # Ονομάζουμε τις στήλες για ευκολία (A, B, C, D, E...)
-    df.columns = [f"Col_{i}" for i in range(len(df.columns))]
-    return df
+    # Φόρτωση του Excel
+    df_raw = pd.read_excel("salary_calc.xlsx", sheet_name="Calc", header=None)
+    
+    # Επιλογή γραμμών 3 έως 287 (index 2 έως 287)
+    # Επιλογή στηλών B έως J (index 1 έως 9)
+    df_subset = df_raw.iloc[2:287, 1:10].copy()
+    
+    # Ονομασία στηλών για να ξέρουμε τι επεξεργαζόμαστε
+    df_subset.columns = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+    
+    # Καθαρισμός κενών τιμών για αποφυγή σφαλμάτων
+    df_subset = df_subset.fillna("")
+    return df_subset
 
 df = load_data()
 
-st.title("📊 Πλήρης Πίνακας Υπολογισμών (AgGrid)")
+st.title("📊 Πίνακας Υπολογισμών (B3:J287)")
 
-# Ρύθμιση του AgGrid
+# 1. Ρύθμιση του GridOptions
 gb = GridOptionsBuilder.from_dataframe(df)
-gb.configure_default_column(editable=True, resizable=True)
 
-# Ρύθμιση Dropdown για το D5 (Col_3, Row 4) και D7 (Col_3, Row 6)
-# Σημείωση: Στο AgGrid η ρύθμιση ανά κελί είναι δύσκολη, οπότε επιτρέπουμε 
-# την επεξεργασία σε όλη τη στήλη D (Col_3)
-gb.configure_column("Col_3", headerName="Προς Επεξεργασία (D)", editable=True)
+# Προεπιλογή: Όλες οι στήλες σταθερές, εκτός από τη D
+gb.configure_default_column(editable=False, resizable=True)
 
+# 2. Ρύθμιση της στήλης D (Col 'D') να είναι επεξεργάσιμη
+# Προσθήκη CellEditor για Dropdown επιλογές
+d5_options = ["Α", "Β", "Γ", "Δ"] + [str(i) for i in range(1, 24)]
+d7_options = ["ΝΑΙ", "ΟΧΙ"]
+d22_options = ["0", "1", "2", "3", "4", "5"]
+
+# Εφαρμογή Dropdown συγκεκριμένα για τα κελιά (μέσω συνάρτησης JS ή απλού Editor)
+# Εδώ ορίζουμε τη στήλη D ως επεξεργάσιμη γενικά
+gb.configure_column("D", 
+                    headerName="Είσοδος (D)", 
+                    editable=True, 
+                    cellStyle={'background-color': '#f0f2f6'},
+                    # Προσθήκη επιλογών ανάλογα με τη γραμμή (πολύ βασικό για AgGrid)
+                    cellEditor='agRichSelectCellEditor',
+                    cellEditorParams={'values': d5_options + d7_options + d22_options} 
+                   )
+
+# Περιορισμός εμφάνισης άλλων στηλών αν χρειάζεται
 grid_options = gb.build()
 
+# 3. Εμφάνιση του Πίνακα
 grid_response = AgGrid(
     df,
     gridOptions=grid_options,
     data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-    update_mode=GridUpdateMode.VALUE_CHANGED,
+    update_mode=GridUpdateMode.VALUE_CHANGED, # Ενημέρωση με κάθε αλλαγή
     fit_columns_on_grid_load=True,
-    theme='streamlit', # Διαθέσιμα: 'streamlit', 'alpine', 'balham', 'material'
+    theme='alpine',
 )
 
-# Παίρνουμε τα ενημερωμένα δεδομένα
-updated_df = grid_response['data']
+# 4. Επεξεργασία των αλλαγών (Python Side)
+updated_df = pd.DataFrame(grid_response['data'])
 
-# --- ΛΟΓΙΚΗ ΥΠΟΛΟΓΙΣΜΟΥ (Python Side) ---
 try:
-    # Εδώ τραβάμε τις τιμές από τα συγκεκριμένα κελιά του πίνακα
-    # index = Row - 1 (π.χ. Row 5 είναι index 4)
-    d5_val = updated_df.iloc[4, 3]  # D5
-    d22_val = updated_df.iloc[21, 3] # D22
-    d43_val = updated_df.iloc[42, 3] # D43
+    # ΣΗΜΑΝΤΙΚΟ: Το index στον updated_df ξεκινάει από το 0 για τη γραμμή 3 του Excel
+    # Άρα: Το D5 του Excel είναι το updated_df.iloc[2, 2] (Στήλη D είναι το 3ο column, index 2)
     
-    # Μετατροπή σε αριθμούς (αν είναι δυνατόν)
-    try:
-        d43_float = float(d43_val)
-    except:
-        d43_float = 0.0
+    d5_val = updated_df.iloc[2, 2]  # D5
+    d7_val = updated_df.iloc[4, 2]  # D7
+    d22_val = updated_df.iloc[19, 2] # D22 (Γραμμή 22 -> index 19)
+    d43_val = updated_df.iloc[40, 2] # D43 (Γραμμή 43 -> index 40)
 
-    # Εδώ βάζεις τους τύπους που είπαμε (παράδειγμα)
-    # E14 = E11 + E12
-    e11 = float(updated_df.iloc[10, 4])
-    e12 = float(updated_df.iloc[11, 4])
-    e14 = e11 + e12
+    # Μετατροπή D43 σε αριθμό για τον υπολογισμό
+    try:
+        val_d43 = float(d43_val) if d43_val != "" else 0.0
+    except:
+        val_d43 = 0.0
+
+    # Εδώ εκτελείται ο "ζωντανός" υπολογισμός που μου έδωσες
+    # Χρειάζεται να ορίσουμε το D177 βάσει των νέων τιμών
+    # (Εδώ μπαίνει η συνάρτηση που φτιάξαμε πριν)
     
-    # D17
-    d17 = float(updated_df.iloc[16, 3])
-    
-    # D177 και E43 (όπως τα συζητήσαμε)
-    # d177 = (e14 + e21 + e22) / d17 ...
-    
-    st.sidebar.success(f"Τελευταίος Υπολογισμός E43: {d43_float * 1.2 * 1.75:.2f} €") # Ενδεικτικά
+    st.sidebar.markdown("### 🧮 Ζωντανά Αποτελέσματα")
+    st.sidebar.write(f"**Επιλογή D5:** {d5_val}")
+    st.sidebar.write(f"**Επιλογή D7:** {d7_val}")
+    st.sidebar.info(f"Αποτέλεσμα βάσει D43: {val_d43 * 1.2 * 1.75:.2f} €") # Ενδεικτικός τύπος
 
 except Exception as e:
-    st.sidebar.error(f"Αναμονή για έγκυρα δεδομένα...")
-
-st.info("💡 Μπορείτε να επεξεργαστείτε οποιοδήποτε κελί απευθείας στον πίνακα.")
+    st.sidebar.warning("Αλλάξτε μια τιμή στη στήλη D για να ξεκινήσει ο υπολογισμός.")
