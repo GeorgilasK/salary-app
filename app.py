@@ -1,83 +1,86 @@
 import streamlit as st
 import pandas as pd
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 
 st.set_page_config(page_title="Υπολογιστής Μισθοδοσίας", layout="wide")
 
+# 1. Συνάρτηση Φόρτωσης
 @st.cache_data
 def load_data():
     df_raw = pd.read_excel("salary_calc.xlsx", sheet_name="Calc", header=None)
-    # Επιλογή B3:J287
+    # Περιοχή B3:J287
     df_subset = df_raw.iloc[2:287, 1:10].copy()
     df_subset.columns = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
-    df_subset = df_subset.fillna("")
     return df_subset
 
 df = load_data()
 
-# --- JavaScript για Dropdown και Format Ευρώ ---
-# Αυτό το κομμάτι επιτρέπει στο AgGrid να δείχνει τη λίστα
-cell_editor_js = JsCode("""
-function(params) {
-    if (params.node.rowIndex === 2) { // Γραμμή 5 (D5)
-        return {
-            component: 'agRichSelectCellEditor',
-            params: { values: ['Α', 'Β', 'Γ', 'Δ', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'] }
-        };
-    }
-    if (params.node.rowIndex === 4) { // Γραμμή 7 (D7)
-        return {
-            component: 'agRichSelectCellEditor',
-            params: { values: ['ΝΑΙ', 'ΟΧΙ'] }
-        };
-    }
-    return { component: 'agTextCellEditor' };
-}
-""")
+st.title("📊 Υπολογιστής Μισθοδοσίας")
 
-euro_format_js = JsCode("""
-function(params) {
-    if (params.value === "" || params.value === null) return "";
-    return parseFloat(params.value).toFixed(2) + " €";
-}
-""")
-
-st.title("📊 Πίνακας Υπολογισμών")
-
+# 2. Ρύθμιση Πίνακα
 gb = GridOptionsBuilder.from_dataframe(df)
 gb.configure_default_column(editable=False, resizable=True)
 
-# Ρύθμιση στήλης D με Dropdown (μέσω JS)
-gb.configure_column("D", editable=True, cellEditorSelector=cell_editor_js)
+# Ρυθμίζουμε τη στήλη D να δέχεται Dropdown με τον απλό τρόπο (χωρίς πολύ JS)
+d5_list = ["Α", "Β", "Γ", "Δ"] + [str(i) for i in range(1, 24)]
+d7_list = ["ΝΑΙ", "ΟΧΙ"]
+d22_list = ["0", "1", "2", "3", "4", "5"]
 
-# Ρύθμιση στήλης Ε για 2 δεκαδικά και Ευρώ
-gb.configure_column("E", valueFormatter=euro_format_js)
+# Εφαρμόζουμε το dropdown σε ΟΛΗ τη στήλη D για να είμαστε σίγουροι ότι θα δουλέψει
+gb.configure_column("D", 
+                    editable=True, 
+                    cellEditor='agSelectCellEditor', 
+                    cellEditorParams={'values': d5_list + d7_list + d22_list})
 
 grid_options = gb.build()
 
+# 3. Εμφάνιση Πίνακα
 grid_response = AgGrid(
     df,
     gridOptions=grid_options,
-    data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
     update_mode=GridUpdateMode.VALUE_CHANGED,
-    allow_unsafe_jscode=True, # Απαραίτητο για να τρέξει το JavaScript
-    theme='alpine',
+    data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+    fit_columns_on_grid_load=True,
+    theme='balham' # Πιο ελαφρύ theme για να φαίνονται οι αλλαγές
 )
 
-# --- ΕΝΗΜΕΡΩΣΗ ΤΙΜΩΝ ---
-updated_df = grid_response['data']
+# 4. Ο "ΜΑΓΙΚΟΣ" ΥΠΟΛΟΓΙΣΜΟΣ ΠΟΥ ΛΕΙΠΕΙ
+updated_df = pd.DataFrame(grid_response['data'])
 
-# Εδώ πρέπει να γίνει ο χειροκίνητος υπολογισμός στην Python
-# για να δεις την αλλαγή στη στήλη Ε
-if grid_response['data'] is not None:
+if not updated_df.empty:
     try:
-        # Παράδειγμα: Αν αλλάξει το D43 (Row index 40), υπολόγισε το E43
-        d43_val = float(updated_df.iloc[40, 2])
-        # Έστω ένας πρόχειρος υπολογισμός για να δεις ότι δουλεύει
-        result = d43_val * 1.2 * 1.75 
-        
-        st.sidebar.metric("Τελικό Αποτέλεσμα (E43)", f"{result:.2f} €")
-    except:
-        pass
+        # Τραβάμε τις τιμές από τις θέσεις τους
+        # Προσοχή: index 2 = Row 5, index 4 = Row 7, index 19 = Row 22, index 40 = Row 43
+        d5_val = updated_df.iloc[2, 2]
+        d22_val = updated_df.iloc[19, 2]
+        d43_val = updated_df.iloc[40, 2]
 
-st.info("💡 Κάντε διπλό κλικ στα κελιά της στήλης D για να ανοίξει η λίστα ή να πληκτρολογήσετε.")
+        # Μετατροπή σε νούμερα
+        try:
+            d43_num = float(d43_val)
+        except:
+            d43_num = 0.0
+
+        # --- ΕΔΩ ΓΡΑΦΟΥΜΕ ΤΟΝ ΤΥΠΟ ΤΟΥ EXCEL ΣΕ PYTHON ---
+        # Παράδειγμα: E14=(E11+E12), D177=(E14+E21+E22)/D17 κλπ.
+        # Θα χρησιμοποιήσουμε τις τιμές που μου έδωσες πριν.
+        
+        # Έστω μια σταθερή τιμή d177 για το παράδειγμα (βάλε τη δική σου αν την ξέρεις)
+        d177_mock = 12.50 
+        e43_result = (d177_mock * d43_num) * 1.20 * 1.75
+
+        # 5. ΕΜΦΑΝΙΣΗ ΑΠΟΤΕΛΕΣΜΑΤΟΣ ΕΚΤΟΣ ΠΙΝΑΚΑ (για σιγουριά)
+        st.markdown("---")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Επιλογή Κλιμακίου (D5)", d5_val)
+        c2.metric("Επίπεδο (D22)", d22_val)
+        c3.subheader(f"Αποτέλεσμα E43: {e43_result:.2f} €")
+
+        # 6. ΠΡΟΣΠΑΘΕΙΑ ΕΝΗΜΕΡΩΣΗΣ ΤΗΣ ΣΤΗΛΗΣ Ε ΣΤΟΝ ΠΙΝΑΚΑ
+        # (Αυτό θα αλλάξει το νούμερο στην οθόνη κάτω από τον πίνακα)
+        updated_df.iloc[40, 3] = f"{e43_result:.2f}" # Ενημέρωση του E43 στο DataFrame
+        
+    except Exception as e:
+        st.error(f"Σφάλμα υπολογισμού: {e}")
+
+st.help("Για να αλλάξετε τιμή: Διπλό κλικ στο κελί της στήλης D, επιλέξτε τιμή και πατήστε ENTER.")
